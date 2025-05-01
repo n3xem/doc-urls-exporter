@@ -6,11 +6,13 @@ import * as cheerio from "cheerio";
 interface UrlExtractorOptions {
   url: string;
   rootOnly: boolean;
+  firstLevelOnly?: boolean;
 }
 
 class UrlExtractor {
   private readonly url: URL;
   private readonly rootOnly: boolean;
+  private readonly firstLevelOnly: boolean;
   private readonly allUniqueUrls = new Set<string>();
   private visitedUrls = new Set<string>();
   private firstLevelUrls: string[] = [];
@@ -18,12 +20,18 @@ class UrlExtractor {
   constructor(options: UrlExtractorOptions) {
     this.url = new URL(options.url);
     this.rootOnly = options.rootOnly;
+    this.firstLevelOnly = options.firstLevelOnly || false;
   }
 
   async extractAll(): Promise<string[]> {
     // 最初のURLからリンクを抽出
     console.error(`最初のURLからリンクを抽出中: ${this.url.href}`);
     this.firstLevelUrls = await this.extract(this.url.href);
+
+    // firstLevelOnlyがtrueの場合は、最初のレベルのURLのみを返す
+    if (this.firstLevelOnly) {
+      return this.firstLevelUrls;
+    }
 
     // 最初に見つかったURLそれぞれに対して処理
     console.error(
@@ -141,16 +149,20 @@ class UrlExtractor {
 
 async function main() {
   if (process.argv.length < 3) {
-    console.error("使用方法: ts-node url-extractor.ts <URL>");
+    console.error(
+      "使用方法: ts-node url-extractor.ts <URL> [--first-level-only]"
+    );
     process.exit(1);
   }
 
   const targetUrl = process.argv[2];
+  const firstLevelOnly = process.argv.includes("--first-level-only");
 
   try {
     const extractor = new UrlExtractor({
       url: targetUrl,
       rootOnly: true,
+      firstLevelOnly: firstLevelOnly,
     });
 
     const links = await extractor.extractAll();
